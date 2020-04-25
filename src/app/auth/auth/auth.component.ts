@@ -1,10 +1,11 @@
 import { Component, OnInit, ComponentFactoryResolver, ViewChild, OnDestroy } from '@angular/core';
 import { NgForm } from '@angular/forms';
-import { AuthService, AuthResponseData } from './auth.service';
-import { Observable, Subscription } from 'rxjs';
-import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { AlertComponent } from 'src/app/shared/alert/alert.component';
 import { PlaceholderDirective } from 'src/app/shared/placeholder/placeholder.directive';
+import * as fromApp from '../../store/app.reducer'
+import { Store } from '@ngrx/store';
+import * as fromAuth from '../store/auth.actions';
 
 @Component({
   selector: 'app-auth',
@@ -17,19 +18,31 @@ export class AuthComponent implements OnInit, OnDestroy {
   isLoading = false;
   error: string = null;
   private closeSub: Subscription;
+  private storeSub: Subscription;
   @ViewChild(PlaceholderDirective) alertHost: PlaceholderDirective;
 
-  constructor(private authService: AuthService,
-    private router: Router,
-    private componentFactoryResolver: ComponentFactoryResolver) { }
+  constructor(
+    private componentFactoryResolver: ComponentFactoryResolver,
+    private store: Store<fromApp.AppState>) { }
 
   ngOnDestroy(): void {
     if (this.closeSub) {
       this.closeSub.unsubscribe();
     }
+
+    if (this.storeSub) {
+      this.storeSub.unsubscribe();
+    }
   }
 
   ngOnInit(): void {
+    this.storeSub = this.store.select('auth').subscribe(authState => {
+      this.isLoading = authState.loading;
+      this.error = authState.authError;
+      if (this.error) {
+        this.showErrorAlert(this.error);
+      }
+    });
   }
 
   onSwitchMode() {
@@ -37,7 +50,7 @@ export class AuthComponent implements OnInit, OnDestroy {
   }
 
   onHandleError() {
-    this.error = null;
+    this.store.dispatch(new fromAuth.ClearError());
   }
 
   private showErrorAlert(error: string) {
@@ -61,25 +74,11 @@ export class AuthComponent implements OnInit, OnDestroy {
     const email = authFrom.value.email;
     const password = authFrom.value.password;
 
-    let authObs: Observable<AuthResponseData>;
-    this.isLoading = true;
-    this.error = '';
     if (this.isLoginMode) {
-      authObs = this.authService.login(email, password);
+      this.store.dispatch(new fromAuth.LoginStart({email, password}));
     } else {
-      authObs = this.authService.signup(email, password);
+      this.store.dispatch(new fromAuth.SignupStart({email, password}));
     }
-
-    authObs.subscribe(result => {
-      console.log(result);
-      this.isLoading = false;
-      this.router.navigate(['/recipes']);
-    }, errorMessage => {
-      console.log(errorMessage);
-      this.error = errorMessage; 
-      this.showErrorAlert(errorMessage); 
-      this.isLoading = false;
-    });
 
     authFrom.reset(); 
   }

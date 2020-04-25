@@ -1,10 +1,13 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { catchError, tap } from 'rxjs/operators';
-import { throwError, BehaviorSubject, from } from 'rxjs';
+import { throwError, } from 'rxjs';
 import { User } from './user.model';
 import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment'
+import { Store } from '@ngrx/store';
+import * as fromApp from '../../store/app.reducer'
+import * as authActions from '../store/auth.actions'
 
 export interface AuthResponseData {
     idToken: string,
@@ -17,34 +20,12 @@ export interface AuthResponseData {
 
 @Injectable({providedIn: "root"})
 export class AuthService {
-    user = new BehaviorSubject<User>(null);
     token: string = null;
     private tokenExpirationTimer: any;
 
     constructor(private httpClient: HttpClient,
-        private router: Router) {}
-
-    signup(email: string, password: string) {
-        return this.httpClient.post<AuthResponseData>(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${environment.firebaseAPIKey}`, {
-            email: email,
-            password: password,
-            returnSecureToken: true
-        }).pipe(catchError(this.handleError),
-            tap(resData => {
-                this.handleAuthentication(resData.email, resData.localId, resData.idToken, +resData.expiresIn);
-            }));
-    }
-
-    login(email: string, password: string) {
-        return this.httpClient.post<AuthResponseData>(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${environment.firebaseAPIKey}`, {
-            email: email,
-            password: password,
-            returnSecureToken: true
-        }).pipe(catchError(this.handleError),
-        tap(resData => {
-            this.handleAuthentication(resData.email, resData.localId, resData.idToken, +resData.expiresIn);
-        }));
-    }
+        private router: Router,
+        private store: Store<fromApp.AppState>) {}
 
     autoLogout(expirationDuration: number) {
         this.tokenExpirationTimer = setTimeout(() => {
@@ -65,15 +46,19 @@ export class AuthService {
         };
 
         if (loadedUser.token) {
-            this.user.next(loadedUser);
+            this.store.dispatch(new authActions.AuthenticateSuccess({
+                email: loadedUser.email,
+                id: loadedUser.id,
+                token: loadedUser.token,
+                tokenExpirationDate: expirationDate
+            }));
             const expirationDuration = expirationDate.getTime() - new Date().getTime();
             this.autoLogout(expirationDuration);
         }
     }
 
     logout() {
-        this.user.next(null);
-        this.router.navigate(['/auth']);
+        this.store.dispatch(new authActions.Logout());
         localStorage.removeItem('userData');
         if (this.tokenExpirationTimer) {
             clearTimeout(this.tokenExpirationTimer);
@@ -84,7 +69,12 @@ export class AuthService {
         const duration = expiresIn * 1000;
         const expirationDate = new Date(new Date().getTime() + duration);
         const user = new User(email, userId, token, expirationDate);
-        this.user.next(user);
+        this.store.dispatch(new authActions.AuthenticateSuccess({
+            email: email,
+            id: userId,
+            token: token,
+            tokenExpirationDate: expirationDate
+        }));
         this.autoLogout(duration);
         localStorage.setItem('userData', JSON.stringify(user));
     }

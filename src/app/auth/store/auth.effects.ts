@@ -3,20 +3,25 @@ import * as fromAuth from './auth.actions';
 import { switchMap, catchError, map, tap } from 'rxjs/operators';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { environment } from '../../../environments/environment'
-import { AuthResponseData } from '../auth/auth.service';
+import { AuthResponseData, AuthService } from '../auth/auth.service';
 import { of } from 'rxjs';
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
+import { User } from '../auth/user.model';
 
 const handleAuthentication = (resData: AuthResponseData) => {
     const duration = +resData.expiresIn * 1000;
     const expirationDate = new Date(new Date().getTime() + duration);
+    const user = new User(resData.email, resData.localId, resData.idToken, expirationDate);    
+    localStorage.setItem('userData', JSON.stringify(user));
+
     return new fromAuth.AuthenticateSuccess({
         email: resData.email,
         id: resData.localId,
         token: resData.idToken,
-        tokenExpirationDate: expirationDate
-    })
+        tokenExpirationDate: expirationDate,
+        redirect: true
+    });
 }
 
 const handleError = (errorRes: HttpErrorResponse) => {
@@ -66,6 +71,9 @@ export class AuthEffects {
                 password: authData.payload.password,
                 returnSecureToken: true
             }).pipe(
+                tap((respData) => {
+                    this.authService.setLogoutTimer(+respData.expiresIn * 1000);
+                }),
                 map(resData => {
                     return handleAuthentication(resData);
                 }),
@@ -85,6 +93,9 @@ export class AuthEffects {
                 password: authData.payload.password,
                 returnSecureToken: true
             }).pipe(
+                tap((respData) => {
+                    this.authService.setLogoutTimer(+respData.expiresIn * 1000);
+                }),
                 map(resData => {
                     return handleAuthentication(resData);
                 }),
@@ -97,14 +108,60 @@ export class AuthEffects {
 
     @Effect({ dispatch: false })
     authRedirect = this.actions$.pipe(
-        ofType(fromAuth.AUTHENTICATE_SUCCESS, fromAuth.LOGOUT),
-        tap(() => {
-            this.router.navigate(['/']);
+        ofType(fromAuth.AUTHENTICATE_SUCCESS),
+        tap((authSuccessAction: fromAuth.AuthenticateSuccess) => {
+            if(authSuccessAction.payload.redirect) {
+                this.router.navigate(['/']);
+            }      
         })
     );
 
+    @Effect()
+    authLogout = this.actions$.pipe(
+        ofType(fromAuth.LOGOUT),
+        tap(() => {
+            this.authService.clearLogoutTimer();
+            localStorage.removeItem('userData');
+            this.router.navigate(['/auth']);
+        })
+    );
+
+    @Effect()
+    autoLogin = this.actions$.pipe(
+        ofType(fromAuth.AUTO_LOGIN),
+        map(() => {
+            const userDate = JSON.parse(localStorage.getItem('userData'));
+            if (!userDate) {
+                return { type: 'DUMMY'};
+            }
+
+            const expirationDate = new Date(userDate._tokenExpirationDate);
+            const loadedUser = new User(
+                userDate.email,
+                userDate.id,
+                userDate._token,
+                expirationDate
+            );
+
+            if (loadedUser.token) {
+                const expirationDuration = expirationDate.getTime() - new Date().getTime();
+                this.authService.setLogoutTimer(expirationDuration);
+                return new fromAuth.AuthenticateSuccess({
+                    email: loadedUser.email,
+                    id: loadedUser.id,
+                    token: loadedUser.token,
+                    tokenExpirationDate: expirationDate,
+                    redirect: false
+                });
+            }
+
+            return { type: 'DUMMY'};
+        })
+    )
+
     constructor(private actions$: Actions,
         private httpClient: HttpClient,
-        private router: Router) {}
+        private router: Router,
+        private authService: AuthService) {}
 
 }

@@ -1,8 +1,8 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { Subscription } from 'rxjs';
-import * as fromApp from '../../store/app.reducer'
-import * as authActions from '../../auth/store/auth.actions'
-import * as recipesActions from '../../recipes/store/recipe.actions'
+import * as fromApp from '../../store/app.reducer';
+import * as authActions from '../../auth/store/auth.actions';
+import * as recipesActions from '../../recipes/store/recipe.actions';
 import { Store } from '@ngrx/store';
 import { map } from 'rxjs/operators';
 
@@ -26,7 +26,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.userSub = this.store.select('auth')
       .pipe(map(authState => {
-        return authState.user
+        return authState.user;
       }))
       .subscribe(user => {
         this.isAuthenticated = !!user;

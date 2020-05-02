@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpInterceptor, HttpRequest, HttpHandler, HttpEvent, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { take, exhaustMap, map } from 'rxjs/operators';
-import * as fromApp from '../../store/app.reducer'
+import * as fromApp from '../../store/app.reducer';
 import { Store } from '@ngrx/store';
 
 @Injectable()
@@ -14,7 +14,7 @@ export class AuthInterseptorService implements HttpInterceptor {
             .pipe(
                 take(1),
                 map(authState => {
-                    return authState.user
+                    return authState.user;
                 }),
                 exhaustMap(user => {
                 if (!user) {
@@ -27,5 +27,4 @@ export class AuthInterseptorService implements HttpInterceptor {
                 return next.handle(modifiedReq);
             }));
     }
-    
 }

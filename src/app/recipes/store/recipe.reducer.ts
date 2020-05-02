@@ -7,14 +7,14 @@ export interface State {
 
 const initialState: State = {
     recipes: []
-}
+};
 export function recipeReducer(state = initialState, action: fromRecipes.RecipesActions) {
     switch (action.type) {
         case fromRecipes.SET_RECIPES: {
             return {
                 ...state,
                 recipes: [...action.payload]
-            }
+            };
         }
         case fromRecipes.ADD_RECIPE:
             return {

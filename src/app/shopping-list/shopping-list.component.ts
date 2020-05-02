@@ -3,7 +3,7 @@ import { Ingredient } from '../shared/ingredient.model';
 import { Subscription, Observable } from 'rxjs';
 import { Store } from '@ngrx/store';
 import * as ShoppingListActions from './store/shopping-list.actions';
-import * as fromApp from '../store/app.reducer'
+import * as fromApp from '../store/app.reducer';
 
 @Component({
   selector: 'app-shopping-list',

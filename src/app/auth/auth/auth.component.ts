@@ -3,7 +3,7 @@ import { NgForm } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { AlertComponent } from 'src/app/shared/alert/alert.component';
 import { PlaceholderDirective } from 'src/app/shared/placeholder/placeholder.directive';
-import * as fromApp from '../../store/app.reducer'
+import * as fromApp from '../../store/app.reducer';
 import { Store } from '@ngrx/store';
 import * as fromAuth from '../store/auth.actions';
 
@@ -60,7 +60,7 @@ export class AuthComponent implements OnInit, OnDestroy {
 
     const componentRef = hostViewContainerRef.createComponent(alertComponentFactory);
     componentRef.instance.message = error;
-    this.closeSub = componentRef.instance.close.subscribe(() => {
+    this.closeSub = componentRef.instance.closeAction.subscribe(() => {
       this.closeSub.unsubscribe();
       hostViewContainerRef.clear();
     });
@@ -80,6 +80,6 @@ export class AuthComponent implements OnInit, OnDestroy {
       this.store.dispatch(new fromAuth.SignupStart({email, password}));
     }
 
-    authFrom.reset(); 
+    authFrom.reset();
   }
 }
